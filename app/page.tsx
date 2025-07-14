@@ -2,6 +2,8 @@
 
 import React, { useState, FormEvent, useRef, useEffect } from 'react';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const TypingIndicator = () => (
   <div className="p-3 rounded-lg bg-gray-700 self-start max-w-lg flex items-center space-x-2">
@@ -22,14 +24,12 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
-  // --- NEW: Hook to load messages from localStorage on startup ---
   useEffect(() => {
     try {
       const savedMessages = localStorage.getItem('alina-chat-history');
       if (savedMessages) {
         setMessages(JSON.parse(savedMessages));
       } else {
-        // Set initial message if no history is found
         setMessages([{ text: 'Hello! How can I help you today?', sender: 'alina' }]);
       }
     } catch (error) {
@@ -38,9 +38,7 @@ export default function ChatPage() {
     }
   }, []);
 
-  // --- NEW: Hook to save messages to localStorage whenever they change ---
   useEffect(() => {
-    // We don't save the initial placeholder message
     if (messages.length > 1) {
       localStorage.setItem('alina-chat-history', JSON.stringify(messages));
     }
@@ -70,7 +68,7 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: "Dan",
+          user_id: "Isma-eel",
           user_input: currentInput,
         }),
       });
@@ -103,7 +101,12 @@ export default function ChatPage() {
                 msg.sender === 'user' ? 'bg-purple-600 self-end' : 'bg-gray-700 self-start'
               }`}
             >
-              <p>{msg.text}</p>
+              {/* --- THIS IS THE UPDATED PART --- */}
+              <div className="prose dark:prose-invert">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.text}
+                  </ReactMarkdown>
+              </div>
             </div>
           ))}
           {isLoading && <TypingIndicator />}

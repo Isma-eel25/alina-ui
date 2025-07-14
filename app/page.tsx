@@ -45,7 +45,7 @@ export default function ChatPage() {
 
     try {
       // --- MODIFIED: Call the real backend API ---
-      const response = await fetch('https://alina-brain-api.onrender.com/chat', {
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

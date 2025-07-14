@@ -17,13 +17,34 @@ interface Message {
 }
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    { text: 'Hello! How can I help you today?', sender: 'alina' },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
+
+  // --- NEW: Hook to load messages from localStorage on startup ---
+  useEffect(() => {
+    try {
+      const savedMessages = localStorage.getItem('alina-chat-history');
+      if (savedMessages) {
+        setMessages(JSON.parse(savedMessages));
+      } else {
+        // Set initial message if no history is found
+        setMessages([{ text: 'Hello! How can I help you today?', sender: 'alina' }]);
+      }
+    } catch (error) {
+        console.error("Failed to parse messages from localStorage", error);
+        setMessages([{ text: 'Hello! How can I help you today?', sender: 'alina' }]);
+    }
+  }, []);
+
+  // --- NEW: Hook to save messages to localStorage whenever they change ---
+  useEffect(() => {
+    // We don't save the initial placeholder message
+    if (messages.length > 1) {
+      localStorage.setItem('alina-chat-history', JSON.stringify(messages));
+    }
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -38,25 +59,23 @@ export default function ChatPage() {
     if (input.trim() === '' || isLoading) return;
 
     const userMessage: Message = { text: input, sender: 'user' };
-    setMessages(prev => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     const currentInput = input;
     setInput('');
     setIsLoading(true);
 
     try {
-      // --- MODIFIED: Call the real backend API ---
-      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/chat', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: "Dan", // Hardcoded for now
+          user_id: "Dan",
           user_input: currentInput,
         }),
       });
-      // --- END MODIFIED SECTION ---
 
       const data = await response.json();
-
       if (data.content) {
         const alinaMessage: Message = { text: data.content, sender: 'alina' };
         setMessages(prev => [...prev, alinaMessage]);
@@ -75,7 +94,6 @@ export default function ChatPage() {
       <header className="bg-gray-800 p-4 shadow-md">
         <h1 className="text-xl font-bold">Alina AI</h1>
       </header>
-
       <main className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-col space-y-4">
           {messages.map((msg, index) => (
@@ -92,7 +110,6 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
       </main>
-
       <footer className="bg-gray-800 p-4">
         <form onSubmit={handleSendMessage} className="flex items-center">
           <input

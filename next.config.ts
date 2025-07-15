@@ -1,5 +1,7 @@
 import type { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {}; // Leave this empty
+const nextConfig: NextConfig = {
+  // This should be empty for a standard web server deployment
+};
 
 export default nextConfig;

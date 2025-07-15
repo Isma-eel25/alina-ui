@@ -2,9 +2,9 @@
 
 import React, { useState, FormEvent, useRef, useEffect } from 'react';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
+import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import Link from 'next/link'; // --- NEW: Import the Link component ---
 
 const TypingIndicator = () => (
   <div className="p-3 rounded-lg bg-gray-700 self-start max-w-lg flex items-center space-x-2">
@@ -90,14 +90,12 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
-      {/* --- MODIFIED: Header updated with the link --- */}
       <header className="bg-gray-800 p-4 shadow-md flex justify-between items-center">
         <h1 className="text-xl font-bold">Alina AI</h1>
         <Link href="/tasks" className="text-sm text-purple-400 hover:text-purple-300">
           View Task Log
         </Link>
       </header>
-
       <main className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-col space-y-4">
           {messages.map((msg, index) => (
@@ -118,7 +116,6 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
       </main>
-
       <footer className="bg-gray-800 p-4">
         <form onSubmit={handleSendMessage} className="flex items-center">
           <input

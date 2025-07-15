@@ -1,9 +1,8 @@
 // app/tasks/page.tsx
 
 import Link from 'next/link';
-import { ArrowsRightLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowsRightLeftIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
-// Define the shape of our Task data
 type Task = {
   id: number;
   type: string;
@@ -13,54 +12,60 @@ type Task = {
   completed_at: string | null;
 };
 
-// Helper function to format dates nicely
-const formatDate = (dateString: string | null) => {
-  if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleString('en-ZA', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+// This component will now also return the error status
+type FetchResult = {
+  tasks: Task[];
+  error: string | null;
 };
 
-// Helper function to determine status color
+const formatDate = (dateString: string | null) => {
+  if (!dateString) return 'N/A';
+  return new Date(dateString).toLocaleString('en-ZA', { hour12: false });
+};
+
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'completed':
-      return 'bg-green-500/20 text-green-400';
-    case 'in_progress':
-      return 'bg-blue-500/20 text-blue-400';
-    case 'failed':
-      return 'bg-red-500/20 text-red-400';
-    default:
-      return 'bg-gray-500/20 text-gray-400';
+    case 'completed': return 'bg-green-500/20 text-green-400';
+    case 'in_progress': return 'bg-blue-500/20 text-blue-400';
+    case 'failed': return 'bg-red-500/20 text-red-400';
+    default: return 'bg-gray-500/20 text-gray-400';
   }
 };
 
-// Fetch data directly on the server
-async function getTasks(): Promise<Task[]> {
+async function getTasks(): Promise<FetchResult> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (!apiUrl) {
-      throw new Error("API URL is not configured.");
+      return { tasks: [], error: "API URL is not configured." };
     }
-    // Fetch fresh data every time to ensure the log is up to date
-    const res = await fetch(`${apiUrl}/tasks`, { cache: 'no-store' }); 
+    const res = await fetch(`${apiUrl}/tasks`, { cache: 'no-store' });
 
     if (!res.ok) {
-      throw new Error('Failed to fetch tasks');
+      // Return a specific error message if the fetch fails
+      return { tasks: [], error: `Failed to fetch tasks. Status: ${res.status}` };
     }
-    return res.json();
+    const tasks = await res.json();
+    return { tasks, error: null }; // Success
   } catch (error) {
     console.error(error);
-    return []; // Return an empty array on error to prevent the page from crashing
+    // Return a generic error message for network issues etc.
+    return { tasks: [], error: "Could not connect to the backend API." };
   }
 }
 
+// --- NEW: A dedicated component to display errors ---
+const ErrorDisplay = ({ message }: { message: string }) => (
+    <div className="text-center p-8 text-amber-500 bg-amber-500/10 rounded-lg">
+        <ExclamationTriangleIcon className="h-10 w-10 mx-auto mb-2" />
+        <p className="font-semibold">Connection Error</p>
+        <p className="text-sm text-amber-400/80">{message}</p>
+        <p className="text-xs text-gray-500 mt-4">This can happen if the backend API is still starting up. Please try refreshing in a moment.</p>
+    </div>
+);
+
+
 export default async function TasksPage() {
-  const tasks = await getTasks();
+  const { tasks, error } = await getTasks();
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
@@ -73,39 +78,44 @@ export default async function TasksPage() {
       </header>
 
       <main className="flex-1 p-4 md:p-8">
-        <div className="bg-gray-800/50 rounded-lg shadow-lg overflow-hidden">
-          <table className="min-w-full">
-            <thead className="bg-gray-700/50">
-              <tr>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">ID</th>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">Type</th>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">Status</th>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300 hidden md:table-cell">Query</th>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">Created At</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700">
-              {tasks.map((task) => (
-                <tr key={task.id} className="hover:bg-gray-700/30">
-                  <td className="py-3 px-4 text-sm">{task.id}</td>
-                  <td className="py-3 px-4 text-sm">{task.type}</td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
-                      {task.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-400 hidden md:table-cell truncate max-w-sm">
-                    {task.parameters?.query || 'N/A'}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-400">{formatDate(task.created_at)}</td>
+        {/* --- MODIFIED: Conditionally render the error, the table, or the empty message --- */}
+        {error ? (
+          <ErrorDisplay message={error} />
+        ) : (
+          <div className="bg-gray-800/50 rounded-lg shadow-lg overflow-hidden">
+            <table className="min-w-full">
+              <thead className="bg-gray-700/50">
+                <tr>
+                  <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">ID</th>
+                  <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">Type</th>
+                  <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">Status</th>
+                  <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300 hidden md:table-cell">Query</th>
+                  <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">Created At</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {tasks.length === 0 && (
-            <p className="text-center p-8 text-gray-500">No tasks found.</p>
-          )}
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {tasks.map((task) => (
+                  <tr key={task.id} className="hover:bg-gray-700/30">
+                    <td className="py-3 px-4 text-sm">{task.id}</td>
+                    <td className="py-3 px-4 text-sm">{task.type}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
+                        {task.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-400 hidden md:table-cell truncate max-w-sm">
+                      {task.parameters?.query || 'N/A'}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-400">{formatDate(task.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {tasks.length === 0 && (
+              <p className="text-center p-8 text-gray-500">No tasks found.</p>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

@@ -1,4 +1,5 @@
 // app/tasks/page.tsx
+// Version 2.0: Mobile Responsive
 
 import Link from 'next/link';
 import { ArrowsRightLeftIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
@@ -12,7 +13,6 @@ type Task = {
   completed_at: string | null;
 };
 
-// This component will now also return the error status
 type FetchResult = {
   tasks: Task[];
   error: string | null;
@@ -35,25 +35,20 @@ const getStatusColor = (status: string) => {
 async function getTasks(): Promise<FetchResult> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      return { tasks: [], error: "API URL is not configured." };
-    }
-    const res = await fetch(`${apiUrl}/tasks`, { cache: 'no-store' });
+    if (!apiUrl) return { tasks: [], error: "API URL is not configured." };
+    
+    const res = await fetch(`${apiUrl}/tasks`, { cache: 'no-store' }); 
 
-    if (!res.ok) {
-      // Return a specific error message if the fetch fails
-      return { tasks: [], error: `Failed to fetch tasks. Status: ${res.status}` };
-    }
+    if (!res.ok) return { tasks: [], error: `Failed to fetch tasks. Status: ${res.status}` };
+    
     const tasks = await res.json();
-    return { tasks, error: null }; // Success
+    return { tasks, error: null };
   } catch (error) {
     console.error(error);
-    // Return a generic error message for network issues etc.
     return { tasks: [], error: "Could not connect to the backend API." };
   }
 }
 
-// --- NEW: A dedicated component to display errors ---
 const ErrorDisplay = ({ message }: { message: string }) => (
     <div className="text-center p-8 text-amber-500 bg-amber-500/10 rounded-lg">
         <ExclamationTriangleIcon className="h-10 w-10 mx-auto mb-2" />
@@ -78,18 +73,21 @@ export default async function TasksPage() {
       </header>
 
       <main className="flex-1 p-4 md:p-8">
-        {/* --- MODIFIED: Conditionally render the error, the table, or the empty message --- */}
         {error ? (
           <ErrorDisplay message={error} />
+        ) : tasks.length === 0 ? (
+           <p className="text-center p-8 text-gray-500">No tasks found.</p>
         ) : (
-          <div className="bg-gray-800/50 rounded-lg shadow-lg overflow-hidden">
-            <table className="min-w-full">
+          // --- MODIFIED: This container now handles the layout change ---
+          <div className="space-y-4 md:space-y-0">
+            {/* --- This table is now hidden on small screens --- */}
+            <table className="min-w-full hidden md:table">
               <thead className="bg-gray-700/50">
                 <tr>
                   <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">ID</th>
                   <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">Type</th>
                   <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">Status</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300 hidden md:table-cell">Query</th>
+                  <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">Query</th>
                   <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300">Created At</th>
                 </tr>
               </thead>
@@ -97,23 +95,39 @@ export default async function TasksPage() {
                 {tasks.map((task) => (
                   <tr key={task.id} className="hover:bg-gray-700/30">
                     <td className="py-3 px-4 text-sm">{task.id}</td>
-                    <td className="py-3 px-4 text-sm">{task.type}</td>
+                    <td className="py-3 px-4 text-sm capitalize">{task.type}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
                         {task.status}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-400 hidden md:table-cell truncate max-w-sm">
-                      {task.parameters?.query || 'N/A'}
-                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-400 truncate max-w-sm">{task.parameters?.query || 'N/A'}</td>
                     <td className="py-3 px-4 text-sm text-gray-400">{formatDate(task.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {tasks.length === 0 && (
-              <p className="text-center p-8 text-gray-500">No tasks found.</p>
-            )}
+
+            {/* --- This list of cards is now shown ONLY on small screens --- */}
+            <div className="md:hidden space-y-4">
+              {tasks.map((task) => (
+                <div key={task.id} className="bg-gray-800/50 rounded-lg p-4 shadow">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-bold text-gray-300">ID: {task.id}</span>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
+                      {task.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-400 mb-2 capitalize">
+                    <span className="font-semibold text-gray-300">Type: </span>{task.type}
+                  </p>
+                  <p className="text-sm text-gray-400 mb-2">
+                    <span className="font-semibold text-gray-300">Query: </span>{task.parameters?.query || 'N/A'}
+                  </p>
+                  <p className="text-xs text-gray-500 text-right">{formatDate(task.created_at)}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>

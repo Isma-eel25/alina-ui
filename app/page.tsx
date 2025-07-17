@@ -1,5 +1,5 @@
 'use client';
-// Diagnostic logging added July 17, 2025
+// Performance fix for mobile typing lag - July 17, 2025
 
 import React, { useState, FormEvent, useRef, useEffect, KeyboardEvent } from 'react';
 import { PaperAirplaneIcon, PlusIcon } from '@heroicons/react/24/solid';
@@ -13,10 +13,10 @@ interface Message {
   sender: 'user' | 'alina';
 }
 
+// --- MODIFIED: ChatInputForm Props ---
+// 'input' and 'setInput' are no longer needed from the parent.
 interface ChatInputFormProps {
-  onSendMessage: (e: FormEvent) => Promise<void>;
-  input: string;
-  setInput: React.Dispatch<React.SetStateAction<string>>;
+  onSendMessage: (messageText: string) => Promise<void>; // Now takes the message text directly
   isLoading: boolean;
 }
 
@@ -29,14 +29,27 @@ const TypingIndicator = () => (
     </div>
 );
 
-const ChatInputForm = ({ onSendMessage, input, setInput, isLoading }: ChatInputFormProps) => {
+// --- MODIFIED: ChatInputForm Component ---
+const ChatInputForm = ({ onSendMessage, isLoading }: ChatInputFormProps) => {
+    // --- FIX: State is now managed inside this component ---
+    // This stops the parent component from re-rendering on every keystroke.
+    const [input, setInput] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // This new function handles the form submission locally
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        if (input.trim() === '' || isLoading) return;
+        onSendMessage(input); // Send the final text to the parent
+        setInput(''); // Clear the local input
+    };
 
     const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             const form = e.currentTarget.closest('form');
             if (form) {
+                // We can still use this clever trick to submit the form
                 const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
                 form.dispatchEvent(submitEvent);
             }
@@ -52,7 +65,7 @@ const ChatInputForm = ({ onSendMessage, input, setInput, isLoading }: ChatInputF
 
     return (
         <footer className="bg-gray-800 p-4">
-            <form onSubmit={onSendMessage} className="flex items-start">
+            <form onSubmit={handleSubmit} className="flex items-start">
                 <textarea
                     ref={textareaRef}
                     value={input}
@@ -64,7 +77,7 @@ const ChatInputForm = ({ onSendMessage, input, setInput, isLoading }: ChatInputF
                     className="flex-1 p-2 rounded-lg bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 resize-none overflow-y-auto"
                     style={{ maxHeight: '200px' }}
                 />
-                <button type="submit" disabled={isLoading} className="ml-4 p-3 bg-purple-600 rounded-full hover:bg-purple-700 focus:outline-none disabled:bg-purple-800 self-end">
+                <button type="submit" disabled={isLoading || input.trim() === ''} className="ml-4 p-3 bg-purple-600 rounded-full hover:bg-purple-700 focus:outline-none disabled:bg-gray-500 disabled:cursor-not-allowed self-end">
                     <PaperAirplaneIcon className="h-6 w-6 text-white" />
                 </button>
             </form>
@@ -75,7 +88,8 @@ const ChatInputForm = ({ onSendMessage, input, setInput, isLoading }: ChatInputF
 // --- Main Chat Page Component ---
 export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
-    const [input, setInput] = useState('');
+    // --- FIX: Input state is removed from the parent component ---
+    // const [input, setInput] = useState(''); 
     const [isLoading, setIsLoading] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
@@ -88,7 +102,6 @@ export default function ChatPage() {
             
             const savedSessionId = localStorage.getItem('alina-session-id');
             if (savedSessionId) setSessionId(savedSessionId);
-
         } catch (error) {
             console.error("Failed to parse from localStorage", error);
             setMessages([{ text: 'Hello! How can I help you today?', sender: 'alina' }]);
@@ -108,25 +121,18 @@ export default function ChatPage() {
         scrollToBottom();
     }, [messages, isLoading]);
 
-    const handleSendMessage = async (e: FormEvent) => {
-        e.preventDefault();
-        if (input.trim() === '' || isLoading) return;
-
-        const userMessage: Message = { text: input, sender: 'user' };
-        setMessages(prev => [...prev, userMessage]);
-        const currentInput = input;
-        setInput('');
+    // --- MODIFIED: handleSendMessage function ---
+    // It now receives the final message text as an argument.
+    const handleSendMessage = async (messageText: string) => {
         setIsLoading(true);
+        const userMessage: Message = { text: messageText, sender: 'user' };
+        setMessages(prev => [...prev, userMessage]);
 
         try {
-            // --- DIAGNOSTIC LOG ADDED ---
-            const requestBody = { user_id: "Isma-eel", user_input: currentInput };
-            console.log(">>>> [UI SENDING]:", JSON.stringify(requestBody, null, 2));
-            
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody),
+                body: JSON.stringify({ user_id: "Isma-eel", user_input: messageText }),
             });
             const data = await response.json();
             if (data.content) {
@@ -188,7 +194,8 @@ export default function ChatPage() {
                     <div ref={messagesEndRef} />
                 </div>
             </main>
-            <ChatInputForm onSendMessage={handleSendMessage} input={input} setInput={setInput} isLoading={isLoading} />
+            {/* --- MODIFIED: Pass the updated function to the form --- */}
+            <ChatInputForm onSendMessage={handleSendMessage} isLoading={isLoading} />
         </div>
     );
 }

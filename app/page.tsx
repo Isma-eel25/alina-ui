@@ -6,7 +6,6 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-// --- Type Definitions (Moved to top level) ---
 interface Message {
   text: string;
   sender: 'user' | 'alina';
@@ -19,7 +18,6 @@ interface ChatInputFormProps {
   isLoading: boolean;
 }
 
-// --- Helper Components ---
 const TypingIndicator = () => (
     <div className="p-3 rounded-lg bg-gray-700 self-start max-w-lg flex items-center space-x-2">
         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
@@ -28,7 +26,6 @@ const TypingIndicator = () => (
     </div>
 );
 
-// --- Optimized Chat Input Form Component ---
 const ChatInputForm = ({ onSendMessage, input, setInput, isLoading }: ChatInputFormProps) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -37,14 +34,12 @@ const ChatInputForm = ({ onSendMessage, input, setInput, isLoading }: ChatInputF
             e.preventDefault();
             const form = e.currentTarget.closest('form');
             if (form) {
-                // Create a synthetic event to submit the form
                 const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
                 form.dispatchEvent(submitEvent);
             }
         }
     };
     
-    // Auto-resize the textarea
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -78,7 +73,6 @@ const ChatInputForm = ({ onSendMessage, input, setInput, isLoading }: ChatInputF
     );
 };
 
-// --- Main Chat Page Component ---
 export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');

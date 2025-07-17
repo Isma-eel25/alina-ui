@@ -1,5 +1,5 @@
 'use client';
-// Force redeploy on July 17, 2025
+// Diagnostic logging added July 17, 2025
 
 import React, { useState, FormEvent, useRef, useEffect, KeyboardEvent } from 'react';
 import { PaperAirplaneIcon, PlusIcon } from '@heroicons/react/24/solid';
@@ -77,7 +77,7 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [sessionId, setSessionId] = useState<string | null>(null); // --- NEW: State for Session ID ---
+    const [sessionId, setSessionId] = useState<string | null>(null);
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
     useEffect(() => {
@@ -119,16 +119,19 @@ export default function ChatPage() {
         setIsLoading(true);
 
         try {
+            // --- DIAGNOSTIC LOG ADDED ---
+            const requestBody = { user_id: "Isma-eel", user_input: currentInput };
+            console.log(">>>> [UI SENDING]:", JSON.stringify(requestBody, null, 2));
+            
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: "Isma-eel", user_input: currentInput }),
+                body: JSON.stringify(requestBody),
             });
             const data = await response.json();
             if (data.content) {
                 const alinaMessage: Message = { text: data.content, sender: 'alina' };
                 setMessages(prev => [...prev, alinaMessage]);
-                // --- NEW: Capture the session ID from the backend ---
                 if (data.session_id) {
                     setSessionId(data.session_id);
                 }
@@ -142,7 +145,6 @@ export default function ChatPage() {
         }
     };
     
-    // --- MODIFIED: This function now saves the transcript to the backend ---
     const handleNewChat = async () => {
         if (messages.length > 1 && sessionId) {
             try {
@@ -155,7 +157,6 @@ export default function ChatPage() {
                 console.error("Failed to archive chat:", error);
             }
         }
-        // Clear local state regardless of archive success
         localStorage.removeItem('alina-chat-history');
         localStorage.removeItem('alina-session-id');
         setMessages([{ text: 'Hello again. Let\'s begin a new conversation.', sender: 'alina' }]);

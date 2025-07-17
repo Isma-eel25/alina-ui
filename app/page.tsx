@@ -1,4 +1,5 @@
 'use client';
+// Force redeploy on July 17, 2025
 
 import React, { useState, FormEvent, useRef, useEffect, KeyboardEvent } from 'react';
 import { PaperAirplaneIcon, PlusIcon } from '@heroicons/react/24/solid';

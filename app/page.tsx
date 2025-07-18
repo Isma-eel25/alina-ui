@@ -1,5 +1,4 @@
 'use client';
-// Performance fix for mobile typing lag - July 17, 2025
 
 import React, { useState, FormEvent, useRef, useEffect, KeyboardEvent } from 'react';
 import { PaperAirplaneIcon, PlusIcon } from '@heroicons/react/24/solid';
@@ -13,10 +12,8 @@ interface Message {
   sender: 'user' | 'alina';
 }
 
-// --- MODIFIED: ChatInputForm Props ---
-// 'input' and 'setInput' are no longer needed from the parent.
 interface ChatInputFormProps {
-  onSendMessage: (messageText: string) => Promise<void>; // Now takes the message text directly
+  onSendMessage: (messageText: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -29,29 +26,26 @@ const TypingIndicator = () => (
     </div>
 );
 
-// --- MODIFIED: ChatInputForm Component ---
+// --- Optimized Chat Input Form ---
 const ChatInputForm = ({ onSendMessage, isLoading }: ChatInputFormProps) => {
-    // --- FIX: State is now managed inside this component ---
-    // This stops the parent component from re-rendering on every keystroke.
     const [input, setInput] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // This new function handles the form submission locally
-    const handleSubmit = (e: FormEvent) => {
+    // --- MODIFIED: Explicitly type the event parameter ---
+    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (input.trim() === '' || isLoading) return;
-        onSendMessage(input); // Send the final text to the parent
-        setInput(''); // Clear the local input
+        onSendMessage(input);
+        setInput('');
     };
 
     const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
+            // We call handleSubmit directly, avoiding the need for 'any'
             const form = e.currentTarget.closest('form');
             if (form) {
-                // We can still use this clever trick to submit the form
-                const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-                form.dispatchEvent(submitEvent);
+               form.requestSubmit();
             }
         }
     };
@@ -88,8 +82,6 @@ const ChatInputForm = ({ onSendMessage, isLoading }: ChatInputFormProps) => {
 // --- Main Chat Page Component ---
 export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
-    // --- FIX: Input state is removed from the parent component ---
-    // const [input, setInput] = useState(''); 
     const [isLoading, setIsLoading] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
@@ -113,16 +105,9 @@ export default function ChatPage() {
         if (sessionId) localStorage.setItem('alina-session-id', sessionId);
     }, [messages, sessionId]);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); };
+    useEffect(() => { scrollToBottom(); }, [messages, isLoading]);
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages, isLoading]);
-
-    // --- MODIFIED: handleSendMessage function ---
-    // It now receives the final message text as an argument.
     const handleSendMessage = async (messageText: string) => {
         setIsLoading(true);
         const userMessage: Message = { text: messageText, sender: 'user' };
@@ -132,20 +117,17 @@ export default function ChatPage() {
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: "Isma-eel", user_input: messageText }),
+                body: JSON.stringify({ user_id: "Isma-eel", user_input: messageText, session_id: sessionId }),
             });
             const data = await response.json();
             if (data.content) {
                 const alinaMessage: Message = { text: data.content, sender: 'alina' };
                 setMessages(prev => [...prev, alinaMessage]);
-                if (data.session_id) {
-                    setSessionId(data.session_id);
-                }
+                if (data.session_id) setSessionId(data.session_id);
             }
         } catch (error) {
             console.error('Failed to get response from API:', error);
-            const errorMessage: Message = { text: 'Sorry, I encountered an error.', sender: 'alina'};
-            setMessages(prev => [...prev, errorMessage]);
+            setMessages(prev => [...prev, { text: 'Sorry, I encountered an error.', sender: 'alina'}]);
         } finally {
             setIsLoading(false);
         }
@@ -159,9 +141,7 @@ export default function ChatPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ session_id: sessionId, transcript: messages }),
                 });
-            } catch (error) {
-                console.error("Failed to archive chat:", error);
-            }
+            } catch (error) { console.error("Failed to archive chat:", error); }
         }
         localStorage.removeItem('alina-chat-history');
         localStorage.removeItem('alina-session-id');
@@ -171,14 +151,14 @@ export default function ChatPage() {
 
     return (
         <div className="flex flex-col h-screen bg-gray-900 text-white">
-            <header className="bg-gray-800 p-4 shadow-md flex justify-between items-center">
+            <header className="sticky top-0 z-10 bg-gray-800 p-4 shadow-md flex justify-between items-center">
                 <button onClick={handleNewChat} className="flex items-center space-x-2 text-purple-400 hover:text-purple-300">
                     <PlusIcon className="h-5 w-5" />
-                    <span>New Chat</span>
+                    <span className="hidden sm:inline">New Chat</span>
                 </button>
                 <h1 className="text-xl font-bold">Alina AI</h1>
-                <Link href="/tasks" className="text-sm text-purple-400 hover:text-purple-300">
-                    View Task Log
+                <Link href="/tasks" className="flex items-center space-x-2 text-purple-400 hover:text-purple-300">
+                    <span className="hidden sm:inline">Task Log</span>
                 </Link>
             </header>
             <main className="flex-1 overflow-y-auto p-4">
@@ -194,7 +174,6 @@ export default function ChatPage() {
                     <div ref={messagesEndRef} />
                 </div>
             </main>
-            {/* --- MODIFIED: Pass the updated function to the form --- */}
             <ChatInputForm onSendMessage={handleSendMessage} isLoading={isLoading} />
         </div>
     );

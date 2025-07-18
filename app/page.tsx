@@ -197,7 +197,7 @@ export default function ChatPage() {
                     <PlusIcon className="h-5 w-5" />
                     <span>New Chat</span>
                 </button>
-                <h1 className="text-xl font-bold text-center">Alina AI</h1>
+                <h1 className="text-xl font-bold text-center mx-2">Alina AI</h1>
                 <Link href="/tasks" className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">
                     Task Log
                 </Link>

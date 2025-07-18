@@ -108,14 +108,12 @@ export default function ChatPage() {
 
     useEffect(() => {
         const savedName = localStorage.getItem('alina-user-name');
-        setUserName(savedName); // Set name, or null if not found
-        
-        if (savedName) { // Only load chat history if a user was already set
+        setUserName(savedName);
+        if (savedName) {
             try {
                 const savedMessages = localStorage.getItem(`alina-chat-history-${savedName}`);
                 if (savedMessages) setMessages(JSON.parse(savedMessages));
                 else setMessages([{ text: `Welcome back, ${savedName}. How can I help you today?`, sender: 'alina' }]);
-                
                 const savedSessionId = localStorage.getItem(`alina-session-id-${savedName}`);
                 if (savedSessionId) setSessionId(savedSessionId);
             } catch (error) {
@@ -129,9 +127,8 @@ export default function ChatPage() {
         setUserName(name);
         localStorage.setItem('alina-user-name', name);
         setMessages([{ text: `Hello ${name}! How can I help you today?`, sender: 'alina' }]);
-        // Clear out any old session data
-        localStorage.removeItem(`alina-chat-history-${name}`);
-        localStorage.removeItem(`alina-session-id-${name}`);
+        if (localStorage.getItem(`alina-chat-history-${name}`)) localStorage.removeItem(`alina-chat-history-${name}`);
+        if (localStorage.getItem(`alina-session-id-${name}`)) localStorage.removeItem(`alina-session-id-${name}`);
         setSessionId(null);
     };
 
@@ -149,7 +146,6 @@ export default function ChatPage() {
         setIsLoading(true);
         const userMessage: Message = { text: messageText, sender: 'user' };
         setMessages(prev => [...prev, userMessage]);
-
         try {
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat`, {
                 method: 'POST',
@@ -199,7 +195,7 @@ export default function ChatPage() {
                     <PlusIcon className="h-5 w-5" />
                     <span>New Chat</span>
                 </button>
-                <h1 className="text-xl font-bold text-center">Alina AI</h1>
+                <h1 className="text-xl font-bold text-center mx-2">Alina AI</h1>
                 <Link href="/tasks" className="flex items-center space-x-2 text-purple-400 hover:text-purple-300">
                     <span>Task Log</span>
                 </Link>
